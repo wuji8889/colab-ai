@@ -1,7 +1,9 @@
 """Daily BTC signal + paper trading: fetch BTC/USDT daily bars (public
 Binance US API, no key), compute dual-MA 10/20 and MACD 19/39/9 signals,
-and simulate orders on a virtual $10,000 account driven by the 10/20
-signal (buy all cash on 持有, sell all BTC on 空仓, 0.1% fee per trade).
+and simulate orders on a virtual $10,000 account driven by the MACD
+19/39/9 signal (buy all cash on 持有, sell all BTC on 空仓, 0.1% fee
+per trade). MACD was the best-tested strategy in backtests (+47.8%,
+max drawdown -23.2%), still behind buy-and-hold (+52.4%).
 SIGNAL + PAPER TRADING ONLY - places no real orders, holds no API keys.
 State lives in signals/paper-portfolio.json, committed back to the repo.
 """
@@ -76,11 +78,11 @@ def load_state(out_dir, price, date):
 
 
 def paper_trade(state, s):
-    """Apply the 10/20 signal to the virtual account. Returns a trade
-    description string, or None when nothing changed."""
+    """Apply the MACD 19/39/9 signal to the virtual account. Returns a
+    trade description string, or None when nothing changed."""
     price = s["close"]
     date = s["date"]
-    if s["ma_signal"] == "持有" and state["btc"] == 0 and state["cash"] > 0:
+    if s["macd_signal"] == "持有" and state["btc"] == 0 and state["cash"] > 0:
         btc = state["cash"] * (1 - FEE) / price
         spent = state["cash"]
         state["btc"] = btc
@@ -89,7 +91,7 @@ def paper_trade(state, s):
             {"date": date, "side": "买入", "price": price,
              "btc": round(btc, 6), "cash": round(spent, 2)})
         return f"虚拟买入：{date} 以 ${price:,.2f} 全仓买入 {btc:.6f} BTC"
-    if s["ma_signal"] == "空仓" and state["btc"] > 0:
+    if s["macd_signal"] == "空仓" and state["btc"] > 0:
         proceeds = state["btc"] * price * (1 - FEE)
         sold = state["btc"]
         state["cash"] = proceeds
@@ -137,7 +139,7 @@ def main():
 - 交易次数：{len(state['trades'])} 次，{last_line}
 - {action_line}
 
-说明：虚拟下单按 10/20 均线信号全仓进出，手续费 0.1%。回测里这两个策略都没跑赢一直拿着，信号仅供参考，不是投资建议。
+说明：虚拟下单按 MACD 19/39/9 信号全仓进出，手续费 0.1%。回测里 MACD 是最好的（+47.8%），但还是没跑赢一直拿着（+52.4%），信号仅供参考，不是投资建议。
 """
     path = os.path.join(out_dir, "daily-signal.md")
     with open(path, "w", encoding="utf-8") as f:
