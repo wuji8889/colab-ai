@@ -1,14 +1,15 @@
-"""Daily US-stock monitor: fetch recent daily bars for 24 US stocks
-(NVDA, AMD, MU, AVGO, TSLA, AAPL, MSFT, GOOGL, AMZN, META, NFLX, PLTR,
-COIN, MSTR, BABA, SMCI, ARM, ASML, LLY, JPM, V, COST, CRM, QCOM) via
-the public Yahoo Finance chart API (no key), plus SPCX (SpaceX token
-on Gate) via Gate's public spot ticker API (no key). Writes a daily
-report to signals/us-stocks.md.
+"""Daily + intraday US-stock monitor: fetch recent daily bars for 24 US
+stocks (NVDA, AMD, MU, AVGO, TSLA, AAPL, MSFT, GOOGL, AMZN, META, NFLX,
+PLTR, COIN, MSTR, BABA, SMCI, ARM, ASML, LLY, JPM, V, COST, CRM, QCOM)
+via the public Yahoo Finance chart API (no key), plus SPCX (SpaceX token
+on Gate) via Gate's public spot ticker API (no key). Writes a report to
+signals/us-stocks.md and current alerts to signals/us-stocks-alerts.json.
 
-Signals are TREND-START entry alerts, not after-the-fact big-move
-alerts: (1) close breaks above the previous 20 trading days' highest
-close (breakout), (2) MACD 19/39/9 DIF crosses above DEA today (MACD
-turns up). No signal can predict a rise before it happens - these fire
+Signals are TREND-START entry alerts: (1) close/live price breaks above
+the previous 20 trading days' highest close (breakout), (2) on the daily
+run only, MACD 19/39/9 DIF crosses above DEA (MACD turns up). During
+market hours an intraday move of 5% or more vs the previous close is also
+flagged. No signal can predict a rise before it happens - these fire
 when a trend is just starting, and a breakout can still pull back.
 PRICE MONITORING ONLY - no orders, no API keys, no real money.
 """
@@ -55,6 +56,16 @@ def ema(values, span):
     return out
 
 
+def is_market_hours(now):
+    """US market hours: Mon-Fri 14:30-21:00 UTC (9:30-16:00 EST)."""
+    if os.environ.get("US_STOCKS_INTRADAY") == "1":
+        return True
+    if now.weekday() >= 5:
+        return False
+    minutes = now.hour * 60 + now.minute
+    return 14 * 60 + 30 <= minutes <= 21 * 60
+
+
 def fetch_yahoo(symbol):
     url = f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}"
     r = requests.get(url, params={"range": "3mo", "interval": "1d"},
@@ -65,14 +76,17 @@ def fetch_yahoo(symbol):
     return closes
 
 
-def stock_signals(closes):
+def stock_signals(closes, intraday):
     """Return (last, prev, pct, [signal strings]) for one stock."""
     last, prev = closes[-1], closes[-2]
     pct = (last / prev - 1) * 100
     signals = []
     if len(closes) > 20 and last > max(closes[-21:-1]):
         signals.append("突破20日高点")
-    if len(closes) > 50:
+    if intraday:
+        if abs(pct) >= 5:
+            signals.append("日内大涨跌" if pct > 0 else "日内大跌")
+    elif len(closes) > 50:
         dif = [a - b for a, b in zip(ema(closes, 19), ema(closes, 39))]
         dea = ema(dif, 9)
         if dif[-1] > dea[-1] and dif[-2] <= dea[-2]:
@@ -92,25 +106,30 @@ def fetch_spcx():
 
 
 def main():
+    now = datetime.now(timezone.utc)
+    intraday = is_market_hours(now)
     rows = []
     for symbol, name in STOCKS:
         try:
             closes = fetch_yahoo(symbol)
-            last, prev, pct, signals = stock_signals(closes)
+            last, prev, pct, signals = stock_signals(closes, intraday)
             rows.append((symbol, name, last, prev, pct, signals, None))
         except Exception as e:
             rows.append((symbol, name, None, None, None, [], str(e)))
     try:
         last, prev = fetch_spcx()
         pct = (last / prev - 1) * 100
-        rows.append(("SPCX", "SpaceX（Gate 代币）", last, prev, pct, [], None))
+        signals = []
+        if intraday and abs(pct) >= 5:
+            signals.append("日内大涨跌" if pct > 0 else "日内大跌")
+        rows.append(("SPCX", "SpaceX（Gate 代币）", last, prev, pct, signals, None))
     except Exception as e:
         rows.append(("SPCX", "SpaceX（Gate 代币）", None, None, None, [], str(e)))
 
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    lines = ["# 美股每日监控（只看价格，不下单）", "", f"- 更新时间：{now}",
+    now_str = now.strftime("%Y-%m-%d %H:%M UTC")
+    lines = ["# 美股每日监控（只看价格，不下单）", "", f"- 更新时间：{now_str}",
              "- 数据：Yahoo Finance（24 只美股）+ Gate 公开接口（SPCX）",
-             "- 信号说明：收盘突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落",
+             "- 信号说明：收盘突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落；盘中每 30 分钟更新一次",
              "", "| 代码 | 名称 | 最新价 | 日涨跌 | 信号 |",
              "| --- | --- | --- | --- | --- |"]
     alerts = []
@@ -137,8 +156,20 @@ def main():
     with open(path, "w", encoding="utf-8") as f:
         f.write(report)
     state_path = os.path.join(out_dir, "us-stocks-alerts.json")
+    previous = {}
+    if os.path.exists(state_path):
+        try:
+            with open(state_path, encoding="utf-8") as f:
+                previous = {a["key"]: a for a in json.load(f).get("alerts", [])}
+        except Exception:
+            previous = {}
+    new_alerts = []
+    for key in alerts:
+        entry = previous.get(key, {"key": key, "first_seen": now_str})
+        new_alerts.append(entry)
     with open(state_path, "w", encoding="utf-8") as f:
-        json.dump({"updated": now, "alerts": alerts}, f, ensure_ascii=False, indent=2)
+        json.dump({"updated": now_str, "intraday": intraday,
+                   "alerts": new_alerts}, f, ensure_ascii=False, indent=2)
     print(report)
     print("wrote", path, "and", state_path)
 
