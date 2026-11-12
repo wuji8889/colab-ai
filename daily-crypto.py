@@ -1,4 +1,4 @@
-"""Crypto monitor (30-min polling, 24/7): fetch daily bars for 20 major
+"""Crypto monitor (30-min polling, 08:00-22:00 CST): fetch daily bars for 20 major
 coins (BTC, ETH, SOL, BNB, XRP, DOGE, ADA, LINK, AVAX, DOT, LTC, BCH,
 UNI, ATOM, NEAR, ETC, FIL, APT, ARB, OP, USDT pairs) via the
 public Binance US API (no key). Writes a report to signals/crypto.md
@@ -7,7 +7,7 @@ and current alerts to signals/crypto-alerts.json.
 Signals are TREND-START entry alerts: (1) last price breaks above the
 previous 20 trading days' highest close (breakout), (2) on the daily
 summary run only (00:00-00:59 UTC), MACD 19/39/9 DIF crosses above DEA
-(MACD turns up). During the day a 24h move of 5% or more vs the previous
+(MACD turns up). During the day a 24h rise of 5% or more vs the previous
 daily close is also flagged. No signal can predict a rise before it
 happens - these fire when a trend is just starting, and a breakout can
 still pull back. PRICE MONITORING ONLY - no orders, no API keys, no
@@ -80,8 +80,8 @@ def coin_signals(closes, daily):
             dea = ema(dif, 9)
             if dif[-1] > dea[-1] and dif[-2] <= dea[-2]:
                 signals.append("MACD刚翻多")
-    elif abs(pct) >= 5:
-        signals.append("24小时大涨" if pct > 0 else "24小时大跌")
+    elif pct >= 5:
+        signals.append("24小时大涨")
     return last, prev, pct, signals
 
 
