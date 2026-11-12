@@ -1,4 +1,4 @@
-"""Daily + intraday US-stock monitor: fetch recent daily bars for 24 US
+"""Daily US-stock monitor: fetch recent daily bars for 24 US
 stocks (NVDA, AMD, MU, AVGO, TSLA, AAPL, MSFT, GOOGL, AMZN, META, NFLX,
 PLTR, COIN, MSTR, BABA, SMCI, ARM, ASML, LLY, JPM, V, COST, CRM, QCOM)
 via the public Yahoo Finance chart API (no key), plus SPCX (SpaceX token
@@ -8,7 +8,7 @@ signals/us-stocks.md and current alerts to signals/us-stocks-alerts.json.
 Signals are TREND-START entry alerts: (1) close/live price breaks above
 the previous 20 trading days' highest close (breakout), (2) on the daily
 run only, MACD 19/39/9 DIF crosses above DEA (MACD turns up). During
-market hours an intraday move of 5% or more vs the previous close is also
+market hours an intraday rise of 5% or more vs the previous close is also
 flagged. No signal can predict a rise before it happens - these fire
 when a trend is just starting, and a breakout can still pull back.
 PRICE MONITORING ONLY - no orders, no API keys, no real money.
@@ -84,8 +84,8 @@ def stock_signals(closes, intraday):
     if len(closes) > 20 and last > max(closes[-21:-1]):
         signals.append("突破20日高点")
     if intraday:
-        if abs(pct) >= 5:
-            signals.append("日内大涨跌" if pct > 0 else "日内大跌")
+        if pct >= 5:
+            signals.append("日内大涨")
     elif len(closes) > 50:
         dif = [a - b for a, b in zip(ema(closes, 19), ema(closes, 39))]
         dea = ema(dif, 9)
@@ -120,8 +120,8 @@ def main():
         last, prev = fetch_spcx()
         pct = (last / prev - 1) * 100
         signals = []
-        if intraday and abs(pct) >= 5:
-            signals.append("日内大涨跌" if pct > 0 else "日内大跌")
+        if intraday and pct >= 5:
+            signals.append("日内大涨")
         rows.append(("SPCX", "SpaceX（Gate 代币）", last, prev, pct, signals, None))
     except Exception as e:
         rows.append(("SPCX", "SpaceX（Gate 代币）", None, None, None, [], str(e)))
@@ -129,7 +129,7 @@ def main():
     now_str = now.strftime("%Y-%m-%d %H:%M UTC")
     lines = ["# 美股每日监控（只看价格，不下单）", "", f"- 更新时间：{now_str}",
              "- 数据：Yahoo Finance（24 只美股）+ Gate 公开接口（SPCX）",
-             "- 信号说明：收盘突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落；盘中每 30 分钟更新一次",
+             "- 信号说明：收盘突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落",
              "", "| 代码 | 名称 | 最新价 | 日涨跌 | 信号 |",
              "| --- | --- | --- | --- | --- |"]
     alerts = []
