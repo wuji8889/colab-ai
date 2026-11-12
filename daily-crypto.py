@@ -1,5 +1,6 @@
-"""Crypto monitor (30-min polling, 24/7): fetch daily bars for 8 major
-coins (BTC, ETH, SOL, BNB, XRP, DOGE, ADA, LINK, USDT pairs) via the
+"""Crypto monitor (30-min polling, 24/7): fetch daily bars for 20 major
+coins (BTC, ETH, SOL, BNB, XRP, DOGE, ADA, LINK, AVAX, DOT, LTC, BCH,
+UNI, ATOM, NEAR, ETC, FIL, APT, ARB, OP, USDT pairs) via the
 public Binance US API (no key). Writes a report to signals/crypto.md
 and current alerts to signals/crypto-alerts.json.
 
@@ -27,6 +28,18 @@ COINS = [
     ("DOGEUSDT", "DOGE", "狗狗币"),
     ("ADAUSDT", "ADA", "艾达币"),
     ("LINKUSDT", "LINK", "Chainlink"),
+    ("AVAXUSDT", "AVAX", "Avalanche"),
+    ("DOTUSDT", "DOT", "波卡"),
+    ("LTCUSDT", "LTC", "莱特币"),
+    ("BCHUSDT", "BCH", "比特币现金"),
+    ("UNIUSDT", "UNI", "Uniswap"),
+    ("ATOMUSDT", "ATOM", "Cosmos"),
+    ("NEARUSDT", "NEAR", "Near"),
+    ("ETCUSDT", "ETC", "以太经典"),
+    ("FILUSDT", "FIL", "Filecoin"),
+    ("APTUSDT", "APT", "Aptos"),
+    ("ARBUSDT", "ARB", "Arbitrum"),
+    ("OPUSDT", "OP", "Optimism"),
 ]
 BINANCE_API = "https://api.binance.us/api/v3/klines"
 
@@ -86,7 +99,7 @@ def main():
 
     now_str = now.strftime("%Y-%m-%d %H:%M UTC")
     lines = ["# 加密货币监控（只看价格，不下单）", "", f"- 更新时间：{now_str}",
-             "- 数据：Binance 公开接口（BTC/ETH/SOL/BNB/XRP/DOGE/ADA/LINK）",
+             "- 数据：Binance 公开接口（20 个主流币）",
              "- 信号说明：价格突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落；每 30 分钟更新一次",
              "", "| 代码 | 名称 | 最新价 | 24小时涨跌 | 信号 |",
              "| --- | --- | --- | --- | --- |"]
