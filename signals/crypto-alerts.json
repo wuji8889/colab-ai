@@ -1,5 +1,10 @@
 {
-  "updated": "2026-11-12 23:31 UTC",
+  "updated": "2026-11-12 23:34 UTC",
   "daily": false,
-  "alerts": []
+  "alerts": [
+    {
+      "key": "NEAR（24小时大跌）",
+      "first_seen": "2026-11-12 23:34 UTC"
+    }
+  ]
 }
