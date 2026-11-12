@@ -2,7 +2,6 @@ name: Daily US stocks monitor
 on:
   schedule:
     - cron: "30 0 * * *"
-    - cron: "*/30 14-21 * * 1-5"
   workflow_dispatch:
 permissions:
   contents: write
