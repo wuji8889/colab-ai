@@ -1,8 +1,9 @@
-"""Daily US-stock monitor: fetch recent daily bars for the 5 US stocks
-from the user's Gate screenshot (NVDA, AMD, MU, AVGO, TSLA) via the
-public Yahoo Finance chart API (no key), plus SPCX (SpaceX token on
-Gate) via Gate's public spot ticker API (no key). Writes a daily report
-to signals/us-stocks.md.
+"""Daily US-stock monitor: fetch recent daily bars for 24 US stocks
+(NVDA, AMD, MU, AVGO, TSLA, AAPL, MSFT, GOOGL, AMZN, META, NFLX, PLTR,
+COIN, MSTR, BABA, SMCI, ARM, ASML, LLY, JPM, V, COST, CRM, QCOM) via
+the public Yahoo Finance chart API (no key), plus SPCX (SpaceX token
+on Gate) via Gate's public spot ticker API (no key). Writes a daily
+report to signals/us-stocks.md.
 
 Signals are TREND-START entry alerts, not after-the-fact big-move
 alerts: (1) close breaks above the previous 20 trading days' highest
@@ -23,6 +24,25 @@ STOCKS = [
     ("MU", "美光科技"),
     ("AVGO", "博通公司"),
     ("TSLA", "特斯拉"),
+    ("AAPL", "苹果"),
+    ("MSFT", "微软"),
+    ("GOOGL", "谷歌"),
+    ("AMZN", "亚马逊"),
+    ("META", "Meta"),
+    ("NFLX", "奈飞"),
+    ("PLTR", "Palantir"),
+    ("COIN", "Coinbase"),
+    ("MSTR", "MicroStrategy"),
+    ("BABA", "阿里巴巴"),
+    ("SMCI", "超微电脑"),
+    ("ARM", "Arm"),
+    ("ASML", "阿斯麦"),
+    ("LLY", "礼来"),
+    ("JPM", "摩根大通"),
+    ("V", "Visa"),
+    ("COST", "开市客"),
+    ("CRM", "Salesforce"),
+    ("QCOM", "高通"),
 ]
 GATE_API = "https://api.gateio.ws/api/v4/spot/tickers"
 
@@ -89,7 +109,7 @@ def main():
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     lines = ["# 美股每日监控（只看价格，不下单）", "", f"- 更新时间：{now}",
-             "- 数据：Yahoo Finance（NVDA/AMD/MU/AVGO/TSLA）+ Gate 公开接口（SPCX）",
+             "- 数据：Yahoo Finance（24 只美股）+ Gate 公开接口（SPCX）",
              "- 信号说明：收盘突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落",
              "", "| 代码 | 名称 | 最新价 | 日涨跌 | 信号 |",
              "| --- | --- | --- | --- | --- |"]
