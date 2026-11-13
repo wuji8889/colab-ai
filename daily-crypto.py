@@ -10,7 +10,9 @@ summary run only (00:00-00:59 UTC), MACD 19/39/9 DIF crosses above DEA
 (MACD turns up). During the day a 24h rise of 5% or more vs the previous
 daily close is also flagged. No signal can predict a rise before it
 happens - these fire when a trend is just starting, and a breakout can
-still pull back. PRICE MONITORING ONLY - no orders, no API keys, no
+still pull back. ETH short-entry alert (user's decision 2026-11-13):
+when ETH rebounds into $2,020-$2,060, flag "反弹到$2,020–2,060空点"
+(stop above $2,105, targets $1,900 then $1,800). PRICE MONITORING ONLY - no orders, no API keys, no
 real money. (Separate from the daily BTC paper-trading signal job.)
 """
 import json
@@ -59,6 +61,20 @@ def is_daily_run(now):
     return now.hour == 0
 
 
+# ETH 短空点位（用户 2026-11-13 决定）：反弹进 $2,020–2,060 提醒，
+# 止损放 $2,105 上面，目标先看 $1,900，再看 $1,800。
+ETH_SHORT_LOW = 2020.0
+ETH_SHORT_HIGH = 2060.0
+ETH_SHORT_SIGNAL = "反弹到$2,020–2,060空点"
+
+
+def eth_short_entry_signal(last):
+    """ETH 反弹进空点区间时返回提醒信号，否则返回 None。"""
+    if last is not None and ETH_SHORT_LOW <= last <= ETH_SHORT_HIGH:
+        return ETH_SHORT_SIGNAL
+    return None
+
+
 def fetch_closes(symbol):
     r = requests.get(BINANCE_API, params={"symbol": symbol,
                                            "interval": "1d", "limit": 100},
@@ -93,14 +109,18 @@ def main():
         try:
             closes = fetch_closes(symbol)
             last, prev, pct, signals = coin_signals(closes, daily)
+            if code == "ETH":
+                short_sig = eth_short_entry_signal(last)
+                if short_sig:
+                    signals.append(short_sig)
             rows.append((code, name, last, prev, pct, signals, None))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - keep the other rows
             rows.append((code, name, None, None, None, [], str(e)))
 
     now_str = now.strftime("%Y-%m-%d %H:%M UTC")
     lines = ["# 加密货币监控（只看价格，不下单）", "", f"- 更新时间：{now_str}",
              "- 数据：Binance 公开接口（20 个主流币）",
-             "- 信号说明：价格突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落；每 30 分钟更新一次",
+             "- 信号说明：价格突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落；ETH 反弹到 $2,020–2,060 会提醒空点；每 30 分钟更新一次",
              "", "| 代码 | 名称 | 最新价 | 24小时涨跌 | 信号 |",
              "| --- | --- | --- | --- | --- |"]
     alerts = []
@@ -114,9 +134,9 @@ def main():
         lines.append(f"| {code} | {name} | ${last:,.2f} | {pct:+.2f}% | {sig} |")
     lines.append("")
     if alerts:
-        lines.append("## 提醒\n\n- 今日趋势刚启动：" + "，".join(alerts))
+        lines.append("## 提醒\n\n- 今日提醒：" + "，".join(alerts))
     else:
-        lines.append("## 提醒\n\n- 今日无趋势启动信号。")
+        lines.append("## 提醒\n\n- 今日无提醒。")
     lines.append("")
     lines.append("说明：价格是 Binance 公开行情，仅供参考，不是投资建议。")
     report = "\n".join(lines) + "\n"
@@ -132,7 +152,7 @@ def main():
         try:
             with open(state_path, encoding="utf-8") as f:
                 previous = {a["key"]: a for a in json.load(f).get("alerts", [])}
-        except Exception:
+        except Exception:  # noqa: BLE001 - stale/corrupt state is fine
             previous = {}
     new_alerts = []
     for key in alerts:
