@@ -1,14 +1,14 @@
 {
-  "updated": "2026-11-13 07:00 UTC",
+  "updated": "2026-11-14 06:49 UTC",
   "intraday": false,
   "alerts": [
     {
-      "key": "AMD（突破20日高点、MACD刚翻多）",
-      "first_seen": "2026-11-12 23:14 UTC"
+      "key": "AAPL（突破20日高点）",
+      "first_seen": "2026-11-14 06:49 UTC"
     },
     {
-      "key": "AVGO（突破20日高点）",
-      "first_seen": "2026-11-12 23:14 UTC"
+      "key": "LLY（突破20日高点）",
+      "first_seen": "2026-11-14 06:49 UTC"
     },
     {
       "key": "COST（突破20日高点）",
