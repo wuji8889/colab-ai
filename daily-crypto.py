@@ -10,9 +10,11 @@ summary run only (00:00-00:59 UTC), MACD 19/39/9 DIF crosses above DEA
 (MACD turns up). During the day a 24h rise of 5% or more vs the previous
 daily close is also flagged. No signal can predict a rise before it
 happens - these fire when a trend is just starting, and a breakout can
-still pull back. ETH short-entry alert (user's decision 2026-11-13):
+still pull back. ETH short-entry alerts (user's decisions): (1) 2026-11-13:
 when ETH rebounds into $2,020-$2,060, flag "反弹到$2,020–2,060空点"
-(stop above $2,105, targets $1,900 then $1,800). PRICE MONITORING ONLY - no orders, no API keys, no
+(stop above $2,105, targets $1,900 then $1,800); (2) 2026-11-15: when
+ETH rebounds into $1,880-$1,920, flag "反弹到$1,900空点" (stop above
+$1,940, targets $1,771 then $1,700). PRICE MONITORING ONLY - no orders, no API keys, no
 real money. (Separate from the daily BTC paper-trading signal job.)
 """
 import json
@@ -75,6 +77,20 @@ def eth_short_entry_signal(last):
     return None
 
 
+# ETH 反弹短空点位（用户 2026-11-15 决定）：反弹进 $1,880–1,920 提醒，
+# 止损放 $1,940 上面，目标先看 $1,771，再看 $1,700。
+ETH_REBOUND_LOW = 1880.0
+ETH_REBOUND_HIGH = 1920.0
+ETH_REBOUND_SIGNAL = "反弹到$1,900空点"
+
+
+def eth_rebound_short_signal(last):
+    """ETH 反弹进 $1,900 空点区间时返回提醒信号，否则返回 None。"""
+    if last is not None and ETH_REBOUND_LOW <= last <= ETH_REBOUND_HIGH:
+        return ETH_REBOUND_SIGNAL
+    return None
+
+
 def fetch_closes(symbol):
     r = requests.get(BINANCE_API, params={"symbol": symbol,
                                            "interval": "1d", "limit": 100},
@@ -113,6 +129,9 @@ def main():
                 short_sig = eth_short_entry_signal(last)
                 if short_sig:
                     signals.append(short_sig)
+                rebound_sig = eth_rebound_short_signal(last)
+                if rebound_sig:
+                    signals.append(rebound_sig)
             rows.append((code, name, last, prev, pct, signals, None))
         except Exception as e:  # noqa: BLE001 - keep the other rows
             rows.append((code, name, None, None, None, [], str(e)))
@@ -120,7 +139,7 @@ def main():
     now_str = now.strftime("%Y-%m-%d %H:%M UTC")
     lines = ["# 加密货币监控（只看价格，不下单）", "", f"- 更新时间：{now_str}",
              "- 数据：Binance 公开接口（20 个主流币）",
-             "- 信号说明：价格突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落；ETH 反弹到 $2,020–2,060 会提醒空点；每 30 分钟更新一次",
+             "- 信号说明：价格突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落；ETH 反弹到 $2,020–2,060 或 $1,880–1,920 会提醒空点；每 30 分钟更新一次",
              "", "| 代码 | 名称 | 最新价 | 24小时涨跌 | 信号 |",
              "| --- | --- | --- | --- | --- |"]
     alerts = []
