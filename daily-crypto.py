@@ -8,7 +8,9 @@ Signals are TREND-START entry alerts: (1) last price breaks above the
 previous 20 trading days' highest close (breakout), (2) on the daily
 summary run only (00:00-00:59 UTC), MACD 19/39/9 DIF crosses above DEA
 (MACD turns up). During the day a 24h rise of 5% or more vs the previous
-daily close is also flagged. No signal can predict a rise before it
+daily close is also flagged, but only when the price is also above its
+20-day average - a bounce inside a downtrend (回调） is not a real rise
+and is not flagged. No signal can predict a rise before it
 happens - these fire when a trend is just starting, and a breakout can
 still pull back. ETH short-entry alerts (user's decisions): (1) 2026-11-13:
 when ETH rebounds into $2,020-$2,060, flag "反弹到$2,020–2,060空点"
@@ -112,7 +114,9 @@ def coin_signals(closes, daily):
             dea = ema(dif, 9)
             if dif[-1] > dea[-1] and dif[-2] <= dea[-2]:
                 signals.append("MACD刚翻多")
-    elif pct >= 5:
+    elif pct >= 5 and len(closes) > 20 and last > sum(closes[-20:]) / 20:
+        # 24h up 5%+ counts as a real rise only above the 20-day average;
+        # a bounce inside a downtrend (回调） is not flagged.
         signals.append("24小时大涨")
     return last, prev, pct, signals
 
@@ -139,7 +143,7 @@ def main():
     now_str = now.strftime("%Y-%m-%d %H:%M UTC")
     lines = ["# 加密货币监控（只看价格，不下单）", "", f"- 更新时间：{now_str}",
              "- 数据：Binance 公开接口（20 个主流币）",
-             "- 信号说明：价格突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落；ETH 反弹到 $2,020–2,060 或 $1,880–1,920 会提醒空点；每 30 分钟更新一次",
+             "- 信号说明：价格突破 20 日最高价，或 MACD 19/39/9 刚翻多，都算趋势刚启动，不保证涨，突破也可能回落；日内 24 小时涨 5% 以上且现价高于 20 日均线才算大涨，下跌趋势里的反弹不算；ETH 反弹到 $2,020–2,060 或 $1,880–1,920 会提醒空点；每 30 分钟更新一次",
              "", "| 代码 | 名称 | 最新价 | 24小时涨跌 | 信号 |",
              "| --- | --- | --- | --- | --- |"]
     alerts = []
